@@ -10,6 +10,7 @@ pkgs.mkShell {
     jdk21
     jdt-language-server
     maven
+    gnumake
   ];
 
   shellHook = ''

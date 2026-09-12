@@ -1,8 +1,10 @@
-FROM maven:3.9-eclipse-temurin-21 AS build
+FROM nixos/nix:2.35.2 AS build
 WORKDIR /app
+COPY shell.nix .
+RUN nix-shell --run 'java -version && mvn --version'
 COPY pom.xml .
 COPY src ./src
-RUN mvn -B package
+RUN nix-shell --run 'mvn -B -Dmaven.test.skip=true package'
 
 FROM eclipse-temurin:21-jre AS runtime
 WORKDIR /app

@@ -1,4 +1,5 @@
 **
 !pom.xml
+!shell.nix
 !src/
 !src/**

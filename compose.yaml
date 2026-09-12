@@ -11,35 +11,35 @@ services:
       - mariadb
 
   db:
-    image: mysql:8.4
+    image: mysql:9.7.2
     environment:
       MYSQL_DATABASE: admin_bases_datos
       MYSQL_RANDOM_ROOT_PASSWORD: "yes"
       MYSQL_USER: app
       MYSQL_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en .env}
     volumes:
-      - mysql_data:/var/lib/mysql
+      - mysql97_data:/var/lib/mysql
 
   postgres:
-    image: postgres:17
+    image: postgres:18.6
     environment:
       POSTGRES_DB: admin_bases_datos
       POSTGRES_USER: app
       POSTGRES_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en .env}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres18_data:/var/lib/postgresql
 
   mariadb:
-    image: mariadb:11.4
+    image: mariadb:12.3.3
     environment:
       MARIADB_DATABASE: admin_bases_datos
       MARIADB_RANDOM_ROOT_PASSWORD: "yes"
       MARIADB_USER: app
       MARIADB_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en .env}
     volumes:
-      - mariadb_data:/var/lib/mysql
+      - mariadb123_data:/var/lib/mysql
 
 volumes:
-  mysql_data:
-  postgres_data:
-  mariadb_data:
+  mysql97_data:
+  postgres18_data:
+  mariadb123_data:
