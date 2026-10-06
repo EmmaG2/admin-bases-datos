@@ -16,4 +16,6 @@ Delivery: ask-on-risk; forecast ~110 authored lines. Route: delegated mapping (4
 
 Progress: Applied SQL twice. Counts remained 6 students, 6 subjects, and 18 grades. Invalid control and orphan grade inserts were rejected; invalid-control and orphan counts were 0. `nix-shell --run 'make run'` built successfully and displayed joined rows. `git diff --check` passed. An initial validation query using `REGEXP BINARY` was invalid on MySQL 9.7; reran with `REGEXP_LIKE`. The first SQL application hit an ambiguous `id` in an upsert, corrected before successful rerun. Makefile URL correction remains in the pre-existing dirty file and cannot be committed separately without carrying user changes.
 
-Next: Commit owned SQL and task document only; preserve all pre-existing user changes and the Makefile URL correction in the worktree.
+Commit evidence: `756e07b` (`feat(db): create MySQL academic schema and sample relationships`) contains the owned SQL and task document. Native review assessment unavailable (`gentle-ai` is not installed); no review authority claimed. The Makefile URL correction is verified but remains uncommitted because that file contains pre-existing user edits.
+
+Next: Preserve all pre-existing user changes. If the user wants the Makefile correction committed, first separate ownership of its pre-existing edits.
