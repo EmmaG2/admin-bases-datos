@@ -1,5 +1,8 @@
 package com.fernandogranados.exception;
 
+import lombok.Getter;
+
+@Getter
 public final class ErrorWithCode extends RuntimeException {
   private static final long serialVersionUID = 1L;
   private final String code;
@@ -13,7 +16,4 @@ public final class ErrorWithCode extends RuntimeException {
     this.code = code;
   }
 
-  public String getCode() {
-    return code;
-  }
 }
