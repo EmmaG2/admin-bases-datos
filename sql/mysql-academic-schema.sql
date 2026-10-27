@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS calificaciones (
   calificacion SMALLINT NOT NULL,
   periodo SMALLINT NOT NULL,
   CONSTRAINT uq_calificaciones_alumno_materia_periodo UNIQUE (id_alumno, id_materia, periodo),
-  CONSTRAINT fk_calificaciones_alumno FOREIGN KEY (id_alumno) REFERENCES alumnos(id),
+  CONSTRAINT fk_calificaciones_alumno_cascade FOREIGN KEY (id_alumno) REFERENCES alumnos(id) ON DELETE CASCADE,
   CONSTRAINT fk_calificaciones_materia FOREIGN KEY (id_materia) REFERENCES materias(id),
   CONSTRAINT chk_calificaciones_rango CHECK (calificacion BETWEEN 0 AND 100),
   CONSTRAINT chk_calificaciones_periodo CHECK (periodo > 0)

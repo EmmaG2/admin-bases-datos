@@ -70,6 +70,10 @@ public final class Database implements AutoCloseable {
     return type;
   }
 
+  public Connection getConnection() {
+    return connection;
+  }
+
   public CrudRepository<Alumno> alumnos() {
     return new JdbcRepository<Alumno>("alumnos", "nombre", "matricula", "especialidad", "fecha_ingreso") {
       @Override

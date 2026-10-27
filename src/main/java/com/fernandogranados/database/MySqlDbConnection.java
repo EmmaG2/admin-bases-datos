@@ -8,6 +8,6 @@ final class MySqlDbConnection {
   private MySqlDbConnection() {}
 
   static Connection connect(String user, String password) throws SQLException {
-    return DriverManager.getConnection("jdbc:mysql://db:3306/admin_bases_datos?sslMode=REQUIRED", user, password);
+    return DriverManager.getConnection(System.getenv().getOrDefault("MYSQL_URL", "jdbc:mysql://db:3306/admin_bases_datos?sslMode=REQUIRED"), user, password);
   }
 }

@@ -8,6 +8,6 @@ final class PostgreSqlDbConnection {
   private PostgreSqlDbConnection() {}
 
   static Connection connect(String user, String password) throws SQLException {
-    return DriverManager.getConnection("jdbc:postgresql://postgres:5432/admin_bases_datos", user, password);
+    return DriverManager.getConnection(System.getenv().getOrDefault("POSTGRES_URL", "jdbc:postgresql://postgres:5432/admin_bases_datos"), user, password);
   }
 }
