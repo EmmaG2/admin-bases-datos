@@ -48,56 +48,17 @@ nativas de tu plataforma. En Linux se requiere GTK 3. No se debe ejecutar este f
 La interfaz conserva la conexión MySQL existente (`MYSQL_URL`, usuario `root`). No regeneres `.env`
 con las bases ya creadas; ese archivo está excluido de Git.
 
-## Factory y CRUD
+## Responsabilidades de acceso a datos
 
-```java
-import com.fernandogranados.database.Database;
-import com.fernandogranados.database.DatabaseFactory;
-import com.fernandogranados.database.DatabaseFactory.DatabaseType;
-import com.fernandogranados.model.Alumno;
-import com.fernandogranados.repository.CrudRepository;
+La interfaz abre una conexión JDBC a MySQL y la entrega a `StudentRepository`,
+que concentra el CRUD de alumnos y la consulta de la boleta de calificaciones.
+Las tablas ya deben existir en el servidor: la aplicación no las crea ni inserta
+datos iniciales automáticamente.
 
-try (Database db = DatabaseFactory.create(DatabaseType.POSTGRESQL)) {
-  CrudRepository<Alumno> alumnos = db.alumnos();
-  int id = alumnos.create(new Alumno(0, "Fernando", "A001", "IA", "Agosto 2026"));
-  System.out.println("Guardado en " + db.type() + " con ID " + id);
-}
-```
+`Database` conserva únicamente el cierre de su conexión y el reporte de errores.
+`DatabaseFactory` y los conectores por motor se conservan, pero la interfaz actual
+no los utiliza. No ofrecen un segundo CRUD.
 
-Cambia `POSTGRESQL` por `MYSQL` o `MARIADB` para guardar en otra base.
-`DatabaseFactory` valida las credenciales y delega la apertura a
-`MySqlDbConnection`, `PostgreSqlDbConnection` o `MariaDbConnection`.
-Cada clase define la URL de su motor y abre la conexión con `DriverManager`.
-
-`try-with-resources` llama a `Database.close()` al salir del bloque, incluso si
-una operación falla. Este método cierra la conexión JDBC y reporta los errores
-de cierre mediante `ErrorWithCode`. La consola confirma la desconexión cuando
-la operación y el cierre terminan correctamente.
-
-`db.alumnos()`, `db.materias()` y `db.calificaciones()` ofrecen la interfaz
-`CrudRepository<T>` con `create`, `findById`, `findAll`, `update` y `delete`.
-`create` devuelve el ID generado; `update(id, entidad)` reemplaza sus campos;
-`delete(id)` elimina el registro. Cada escritura se guarda inmediatamente.
-
-## Operaciones por consola
-
-El primer argumento selecciona el motor. Cada comando imprime dónde opera:
-
-```sh
-docker compose run --rm app POSTGRESQL alumnos create "Fernando" PG001 IA "Agosto 2026"
-docker compose run --rm app POSTGRESQL alumnos list
-docker compose run --rm app POSTGRESQL alumnos read 1
-docker compose run --rm app POSTGRESQL alumnos update 1 "Fernando Granados" PG001 IA "Agosto 2026"
-docker compose run --rm app POSTGRESQL alumnos delete 1
-docker compose run --rm app help
-```
-
-Sustituye `1` por el ID devuelto al crear. Para las otras tablas, los campos son:
-
-- `materias`: nombre, creditos, especialidad.
-- `calificaciones`: idAlumno, idMateria, calificacion, periodo.
-
-Las calificaciones requieren un alumno y una materia existentes en la misma base.
 En MySQL, eliminar un alumno elimina permanentemente sus calificaciones mediante
 `ON DELETE CASCADE`. Para eliminar una materia, elimina primero sus calificaciones.
 
