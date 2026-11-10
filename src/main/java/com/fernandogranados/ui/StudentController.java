@@ -4,6 +4,7 @@ import com.fernandogranados.model.Alumno;
 import com.fernandogranados.repository.StudentRepository;
 import com.fernandogranados.model.ReportCard;
 import com.fernandogranados.pdf.ReportCardPdfExporter;
+import com.fernandogranados.pdf.StudentReportPdfExporter;
 import java.io.File;
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -35,7 +36,7 @@ public final class StudentController {
     this.stage = stage;
     view = new StudentView(stage, () -> load(null, null, "La lista de alumnos se actualizó."),
         this::create, this::update, this::delete, this::clearForm, this::loadReportCard,
-        this::exportPdf, this::showError);
+        this::exportPdf, this::exportStudentReport, this::showError);
     load(null, null, "La lista de alumnos se cargó.");
   }
 
@@ -78,6 +79,7 @@ public final class StudentController {
     if (closing) return;
     Alumno previousReportStudent = view.gradeStudent.getValue();
     refreshing = true;
+    view.exportStudents.setDisable(true);
     reportRequest++;
     currentReport = null;
     view.clearReport("Cargando alumnos…");
@@ -99,6 +101,7 @@ public final class StudentController {
       @Override protected void succeeded() {
         if (closing) return;
         view.table.getItems().setAll(getValue());
+        view.exportStudents.setDisable(false);
         clearForm();
         if (selectedId != null) {
           view.table.getItems().stream().filter(student -> student.getId() == selectedId).findFirst()
@@ -161,9 +164,21 @@ public final class StudentController {
     Alumno student = view.gradeStudent.getValue();
     ReportCard report = currentReport;
     if (closing || student == null || report == null) return;
+    exportPdf("boleta-" + student.getMatricula() + ".pdf",
+        destination -> new ReportCardPdfExporter().export(connection, student, destination));
+  }
+
+  private void exportStudentReport() {
+    if (closing || refreshing || students == null) return;
+    exportPdf("reporte-alumnos.pdf",
+        destination -> new StudentReportPdfExporter().export(students.findStudentReport(), destination));
+  }
+
+  private void exportPdf(String filename, PdfAction action) {
+    if (closing) return;
     FileChooser chooser = new FileChooser();
     chooser.setTitle("Exportar PDF");
-    chooser.setInitialFileName("boleta-" + student.getMatricula() + ".pdf");
+    chooser.setInitialFileName(filename);
     chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Documentos PDF", "*.pdf"));
     File file = chooser.showSaveDialog(stage);
     if (file == null) return;
@@ -172,7 +187,7 @@ public final class StudentController {
     view.status.setText("Exportando PDF…");
     Task<Void> task = new Task<>() {
       @Override protected Void call() throws Exception {
-        new ReportCardPdfExporter().export(student, report, destination);
+        action.run(destination);
         return null;
       }
 
@@ -233,6 +248,8 @@ public final class StudentController {
     });
     database.shutdown();
   }
+
+  @FunctionalInterface private interface PdfAction { void run(Path destination) throws Exception; }
 
   @FunctionalInterface private interface DatabaseAction { Integer run() throws SQLException; }
 }

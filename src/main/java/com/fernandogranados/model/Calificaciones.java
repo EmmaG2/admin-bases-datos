@@ -13,13 +13,13 @@ public class Calificaciones {
   private int idAlumno;
   private int idMateria;
   private short calificacion;
-  private short periodo;
+  private String periodo;
 
   public Calificaciones() {
   }
 
   @Builder
-  public Calificaciones(int id, int idAlumno, int idMateria, short calificacion, short periodo) {
+  public Calificaciones(int id, int idAlumno, int idMateria, short calificacion, String periodo) {
     this.id = id;
     this.idAlumno = idAlumno;
     this.idMateria = idMateria;

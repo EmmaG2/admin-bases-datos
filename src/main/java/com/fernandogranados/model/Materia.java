@@ -11,15 +11,17 @@ import lombok.ToString;
 public class Materia {
     private int id;
     private String nombre;
+    private String clave;
     private byte creditos;
     private String especialidad;
 
     public Materia() {}
 
     @Builder
-    public Materia(int id, String nombre, byte creditos, String especialidad) {
+    public Materia(int id, String nombre, String clave, byte creditos, String especialidad) {
         this.id = id;
         this.nombre = nombre;
+        this.clave = clave;
         this.creditos = creditos;
         this.especialidad = especialidad;
     }

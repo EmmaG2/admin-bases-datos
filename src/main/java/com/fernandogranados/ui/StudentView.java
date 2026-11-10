@@ -32,6 +32,7 @@ final class StudentView {
   final StudentForm form;
   final ComboBox<Alumno> gradeStudent = new ComboBox<>();
   final Button exportPdf;
+  final Button exportStudents;
   private final TableView<Grade> grades = new TableView<>();
   private final Label reportName = new Label();
   private final Label reportDetails = new Label();
@@ -40,7 +41,7 @@ final class StudentView {
 
   StudentView(Stage stage, Runnable refreshAction, Runnable createAction,
       Runnable updateAction, Runnable deleteAction, Runnable clearAction,
-      Runnable gradeAction, Runnable exportAction, Consumer<Throwable> onError) {
+      Runnable gradeAction, Runnable exportAction, Runnable studentReportAction, Consumer<Throwable> onError) {
     exportPdf = button("Exportar PDF", exportAction, onError);
     exportPdf.getStyleClass().add("primary");
     exportPdf.setDisable(true);
@@ -48,7 +49,10 @@ final class StudentView {
     title.getStyleClass().add("page-title");
     VBox heading = new VBox(6, title);
     Button refresh = button("Actualizar", refreshAction, onError);
-    HBox header = new HBox(24, heading, refresh);
+    exportStudents = button("Reporte de alumnos", studentReportAction, onError);
+    exportStudents.getStyleClass().add("primary");
+    exportStudents.setDisable(true);
+    HBox header = new HBox(24, heading, exportStudents, refresh);
     header.setAlignment(Pos.CENTER_LEFT);
     HBox.setHgrow(heading, Priority.ALWAYS);
     header.getStyleClass().add("page-header");

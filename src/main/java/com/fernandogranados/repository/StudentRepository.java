@@ -1,39 +1,81 @@
 package com.fernandogranados.repository;
 
 import com.fernandogranados.model.Alumno;
+import com.fernandogranados.model.Calificaciones;
 import com.fernandogranados.model.ReportCard;
+import com.fernandogranados.model.StudentReport;
 import com.fernandogranados.model.ReportCard.Grade;
+import lombok.extern.slf4j.Slf4j;
+
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
+@Slf4j
 public final class StudentRepository {
   private static final String COLUMNS = "id, name, control, epecialidad, fecha_ingreso";
   private final Connection connection;
 
   public StudentRepository(Connection connection) {
-    this.connection = java.util.Objects.requireNonNull(connection);
+    this.connection = Objects.requireNonNull(connection);
   }
 
   public int create(Alumno student) throws SQLException {
-    validate(student);
     try (PreparedStatement statement = connection.prepareStatement(
         "INSERT INTO alumnos (name, control, epecialidad, fecha_ingreso) VALUES (?, ?, ?, ?)",
         Statement.RETURN_GENERATED_KEYS)) {
       bind(statement, student);
       statement.executeUpdate();
       try (ResultSet keys = statement.getGeneratedKeys()) {
-        if (!keys.next()) throw new SQLException("La base de datos no devolvió el identificador del alumno.");
-        return keys.getInt(1);
+        if (keys.next()) {
+          return keys.getInt(1);
+        }
+
+        throw new SQLException("La base de datos no devolvió el identificador del alumno.");
       }
+    }
+  }
+
+  public int createWithInitialGrade(Alumno student, Calificaciones grade) throws SQLException {
+    Connection con = connection;
+    try {
+      con.setAutoCommit(false);
+
+      String sqlAlumno = "INSERT INTO alumnos (name, control, epecialidad, fecha_ingreso) VALUES (?, ?, ?, ?)";
+      PreparedStatement psAlumno = con.prepareStatement(sqlAlumno, Statement.RETURN_GENERATED_KEYS);
+      bind(psAlumno, student);
+      psAlumno.executeUpdate();
+
+      ResultSet keys = psAlumno.getGeneratedKeys();
+      if (!keys.next()) {
+        throw new SQLException("La base de datos no devolvió el identificador del alumno.");
+      }
+      int studentId = keys.getInt(1);
+
+      String sqlCalificacion = "INSERT INTO calificaciones (id_alumno, id_materia, calificacion, periodo) VALUES (?, ?, ?, ?)";
+      PreparedStatement psCalificacion = con.prepareStatement(sqlCalificacion);
+      psCalificacion.setInt(1, studentId);
+      psCalificacion.setInt(2, grade.getIdMateria());
+      psCalificacion.setShort(3, grade.getCalificacion());
+      psCalificacion.setString(4, grade.getPeriodo());
+      psCalificacion.executeUpdate();
+
+      con.commit();
+      log.info("Transacción exitosa");
+      return studentId;
+    } catch (Exception error) {
+      if (con != null) {
+        con.rollback();
+      }
+      log.error("Se canceló la operación", error);
+      throw new SQLException("No se pudo registrar el alumno y su calificación.", error);
     }
   }
 
@@ -42,7 +84,11 @@ public final class StudentRepository {
         "SELECT " + COLUMNS + " FROM alumnos WHERE id = ?")) {
       statement.setInt(1, id);
       try (ResultSet rows = statement.executeQuery()) {
-        return rows.next() ? Optional.of(map(rows)) : Optional.empty();
+        if (rows.next()) {
+          return Optional.of(map(rows));
+        }
+
+        return Optional.empty();
       }
     }
   }
@@ -50,23 +96,48 @@ public final class StudentRepository {
   public List<Alumno> findAll() throws SQLException {
     try (PreparedStatement statement = connection.prepareStatement(
         "SELECT " + COLUMNS + " FROM alumnos ORDER BY id");
-         ResultSet rows = statement.executeQuery()) {
+        ResultSet rows = statement.executeQuery()) {
       List<Alumno> students = new ArrayList<>();
-      while (rows.next()) students.add(map(rows));
+      while (rows.next()) {
+        students.add(map(rows));
+      }
+
       return students;
     }
   }
 
-  public ReportCard findReportCard(int studentId, String specialty) throws SQLException {
-    validateId(studentId);
+  public StudentReport findStudentReport() throws SQLException {
+    List<Alumno> allStudents = findAll();
+    List<StudentReport.SubjectCount> subjects = new ArrayList<>();
     try (PreparedStatement statement = connection.prepareStatement("""
-        SELECT m.nombre AS materia, c.periodo, c.calificacion,
+        SELECT m.id, m.clave, m.nombre, m.especialidad,
+               COUNT(DISTINCT c.id_alumno) AS alumnos
+        FROM materias m
+        LEFT JOIN calificaciones c ON c.id_materia = m.id
+        GROUP BY m.id, m.clave, m.nombre, m.especialidad
+        ORDER BY m.especialidad, m.nombre, m.id
+        """); ResultSet rows = statement.executeQuery()) {
+      while (rows.next()) {
+        String code = rows.getString("clave");
+        String name = rows.getString("nombre");
+        String specialty = rows.getString("especialidad");
+        long studentCount = rows.getLong("alumnos");
+
+        subjects.add(new StudentReport.SubjectCount(code, name, specialty, studentCount));
+      }
+    }
+    return new StudentReport(allStudents, subjects);
+  }
+
+  public ReportCard findReportCard(int studentId, String specialty) throws SQLException {
+    try (PreparedStatement statement = connection.prepareStatement("""
+        SELECT m.nombre AS materia, m.clave, c.periodo, c.calificacion,
           (SELECT AVG(g.calificacion)
            FROM calificaciones g WHERE g.id_alumno = c.id_alumno) AS promedio
         FROM calificaciones c
         INNER JOIN materias m ON m.id = c.id_materia
         WHERE c.id_alumno = ? AND m.especialidad = ?
-        ORDER BY c.periodo, m.nombre, m.id
+        ORDER BY CASE c.periodo WHEN 'Ene/Ago' THEN 1 ELSE 2 END, m.nombre, m.id
         """)) {
       statement.setInt(1, studentId);
       statement.setString(2, specialty);
@@ -74,10 +145,19 @@ public final class StudentRepository {
         List<Grade> grades = new ArrayList<>();
         Double average = null;
         while (rows.next()) {
-          grades.add(new Grade(rows.getString("materia"), rows.getShort("periodo"),
-              rows.getShort("calificacion")));
+          String subject = rows.getString("materia");
+          String code = rows.getString("clave");
+          String period = rows.getString("periodo");
+          short grade = rows.getShort("calificacion");
+
+          grades.add(new Grade(subject, code, period, grade));
+
           double value = rows.getDouble("promedio");
-          average = rows.wasNull() ? null : Math.round(value * 100.0) / 100.0;
+          if (rows.wasNull()) {
+            average = null;
+          } else {
+            average = Math.round(value * 100.0) / 100.0;
+          }
         }
         return new ReportCard(List.copyOf(grades), average);
       }
@@ -85,46 +165,21 @@ public final class StudentRepository {
   }
 
   public boolean update(int id, Alumno student) throws SQLException {
-    validateId(id);
-    validate(student);
     try (PreparedStatement statement = connection.prepareStatement(
         "UPDATE alumnos SET name = ?, control = ?, epecialidad = ?, fecha_ingreso = ? WHERE id = ?")) {
       bind(statement, student);
       statement.setInt(5, id);
-      return statement.executeUpdate() > 0;
+
+      int rows = statement.executeUpdate();
+      log.info("Updated rows: {}", rows);
+      return rows > 0;
     }
   }
 
   public boolean delete(int id) throws SQLException {
-    validateId(id);
     try (PreparedStatement statement = connection.prepareStatement("DELETE FROM alumnos WHERE id = ?")) {
       statement.setInt(1, id);
       return statement.executeUpdate() > 0;
-    }
-  }
-
-  private static void validateId(int id) {
-    if (id <= 0) throw new IllegalArgumentException("Selecciona un alumno primero.");
-  }
-
-  private static void validate(Alumno student) {
-    if (student == null) throw new IllegalArgumentException("El alumno es obligatorio.");
-    if (student.getNombre() == null || student.getNombre().isBlank()
-        || student.getNombre().length() > 80) {
-      throw new IllegalArgumentException("El nombre es obligatorio y debe tener como máximo 80 caracteres.");
-    }
-    if (student.getMatricula() == null || !student.getMatricula().matches("2304[0-9]{4}")) {
-      throw new IllegalArgumentException("La matrícula debe tener el formato 2304XXXX, donde cada X es un dígito.");
-    }
-    if (student.getEspecialidad() == null || student.getEspecialidad().isBlank()
-        || student.getEspecialidad().length() > 80) {
-      throw new IllegalArgumentException("La especialidad es obligatoria y debe tener como máximo 80 caracteres.");
-    }
-    if (student.getFechaIngreso() == null) throw new IllegalArgumentException("Ingresa una fecha válida con el formato AAAA-MM-DD.");
-    try {
-      LocalDate.parse(student.getFechaIngreso());
-    } catch (DateTimeParseException error) {
-      throw new IllegalArgumentException("Ingresa una fecha válida con el formato AAAA-MM-DD.", error);
     }
   }
 

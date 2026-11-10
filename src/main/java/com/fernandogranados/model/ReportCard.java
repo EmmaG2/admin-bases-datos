@@ -7,5 +7,5 @@ public record ReportCard(List<Grade> grades, Double average) {
     grades = List.copyOf(grades);
   }
 
-  public record Grade(String subject, short period, short grade) {}
+  public record Grade(String subject, String code, String period, short grade) {}
 }
