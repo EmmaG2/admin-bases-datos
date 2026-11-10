@@ -25,22 +25,22 @@ INSERT INTO alumnos (name, control, epecialidad, fecha_ingreso) VALUES
   ('Daniel Fuentes', '23049119', 'Industrial', '2024-08-19')
 ON DUPLICATE KEY UPDATE id = id;
 
-INSERT INTO materias (nombre, creditos, especialidad) VALUES
-  ('Estructuras de Datos', 5, 'Sistemas'),
-  ('Redes de Computadoras', 5, 'Sistemas'),
-  ('Sistemas Operativos', 4, 'Sistemas'),
-  ('Ingenieria de Software', 6, 'Sistemas'),
-  ('Estadistica Aplicada', 5, 'Industrial'),
-  ('Investigacion de Operaciones', 6, 'Industrial'),
-  ('Control de Calidad', 4, 'Industrial'),
-  ('Procesos de Manufactura', 5, 'Industrial')
+INSERT INTO materias (nombre, clave, creditos, especialidad) VALUES
+  ('Estructuras de Datos', 'ESDA-00007', 5, 'Sistemas'),
+  ('Redes de Computadoras', 'RECO-00008', 5, 'Sistemas'),
+  ('Sistemas Operativos', 'SIOP-00009', 4, 'Sistemas'),
+  ('Ingenieria de Software', 'INSO-00010', 6, 'Sistemas'),
+  ('Estadistica Aplicada', 'ESAP-00011', 5, 'Industrial'),
+  ('Investigacion de Operaciones', 'INOP-00012', 6, 'Industrial'),
+  ('Control de Calidad', 'COCA-00013', 4, 'Industrial'),
+  ('Procesos de Manufactura', 'PRMA-00014', 5, 'Industrial')
 ON DUPLICATE KEY UPDATE id = id;
 
 -- Each new student receives four subject grades in each of two periods.
 INSERT INTO calificaciones (id_alumno, id_materia, calificacion, periodo)
 SELECT a.id, m.id,
        45 + MOD(CAST(RIGHT(a.control, 2) AS UNSIGNED) * 7 + m.id * 3 + p.periodo * 11, 56),
-       p.periodo
+       CASE p.periodo WHEN 1 THEN 'Ene/Ago' ELSE 'Ago/Dic' END
 FROM alumnos a
 JOIN materias m ON m.especialidad = a.epecialidad
 CROSS JOIN (SELECT 1 AS periodo UNION ALL SELECT 2) p

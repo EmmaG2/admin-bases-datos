@@ -10,8 +10,11 @@ CREATE TABLE IF NOT EXISTS alumnos (
 CREATE TABLE IF NOT EXISTS materias (
   id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   nombre VARCHAR(120) NOT NULL,
+  clave VARCHAR(10) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
   creditos TINYINT UNSIGNED NOT NULL,
   especialidad VARCHAR(80) NOT NULL,
+  CONSTRAINT uq_materias_clave UNIQUE (clave),
+  CONSTRAINT chk_materias_clave CHECK (REGEXP_LIKE(clave, '^[A-Z]{4}-[0-9]{5}$', 'c') AND RIGHT(clave, 5) <> '00000'),
   CONSTRAINT uq_materias_nombre_especialidad UNIQUE (nombre, especialidad),
   CONSTRAINT chk_materias_creditos CHECK (creditos > 0)
 ) ENGINE=InnoDB;
@@ -21,12 +24,12 @@ CREATE TABLE IF NOT EXISTS calificaciones (
   id_alumno INT NOT NULL,
   id_materia INT NOT NULL,
   calificacion SMALLINT NOT NULL,
-  periodo SMALLINT NOT NULL,
+  periodo VARCHAR(7) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
   CONSTRAINT uq_calificaciones_alumno_materia_periodo UNIQUE (id_alumno, id_materia, periodo),
   CONSTRAINT fk_calificaciones_alumno_cascade FOREIGN KEY (id_alumno) REFERENCES alumnos(id) ON DELETE CASCADE,
   CONSTRAINT fk_calificaciones_materia FOREIGN KEY (id_materia) REFERENCES materias(id),
   CONSTRAINT chk_calificaciones_rango CHECK (calificacion BETWEEN 0 AND 100),
-  CONSTRAINT chk_calificaciones_periodo CHECK (periodo > 0)
+  CONSTRAINT chk_calificaciones_periodo CHECK (periodo IN ('Ago/Dic', 'Ene/Ago'))
 ) ENGINE=InnoDB;
 
 INSERT INTO alumnos (name, control, epecialidad, fecha_ingreso) VALUES
@@ -38,17 +41,17 @@ INSERT INTO alumnos (name, control, epecialidad, fecha_ingreso) VALUES
   ('Mateo Ruiz', '23049005', 'Industrial', '2023-08-21')
 ON DUPLICATE KEY UPDATE id = id;
 
-INSERT INTO materias (nombre, creditos, especialidad) VALUES
-  ('Bases de Datos', 5, 'Sistemas'),
-  ('Programacion', 5, 'Sistemas'),
-  ('Matematicas', 5, 'Sistemas'),
-  ('Bases de Datos', 5, 'Industrial'),
-  ('Programacion', 5, 'Industrial'),
-  ('Matematicas', 5, 'Industrial')
+INSERT INTO materias (nombre, clave, creditos, especialidad) VALUES
+  ('Bases de Datos', 'BADA-00001', 5, 'Sistemas'),
+  ('Programacion', 'PROG-00002', 5, 'Sistemas'),
+  ('Matematicas', 'MATE-00003', 5, 'Sistemas'),
+  ('Bases de Datos', 'BADA-00004', 5, 'Industrial'),
+  ('Programacion', 'PROG-00005', 5, 'Industrial'),
+  ('Matematicas', 'MATE-00006', 5, 'Industrial')
 ON DUPLICATE KEY UPDATE id = id;
 
 INSERT INTO calificaciones (id_alumno, id_materia, calificacion, periodo)
-SELECT a.id, m.id, 70 + MOD(CAST(RIGHT(a.control, 2) AS UNSIGNED) * 7 + m.id * 3, 31), 1
+SELECT a.id, m.id, 70 + MOD(CAST(RIGHT(a.control, 2) AS UNSIGNED) * 7 + m.id * 3, 31), 'Ene/Ago'
 FROM alumnos a
 JOIN materias m ON m.especialidad = a.epecialidad
 WHERE a.control IN ('23049000', '23049001', '23049002', '23049003', '23049004', '23049005')
